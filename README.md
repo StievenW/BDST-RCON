@@ -17,7 +17,10 @@
     cd BDST-RCON
     ```
 
-2. **Run the application:**
+2. **Place `main.py` in the same folder as `bedrock_server.exe`:**
+   Ensure that `main.py` is located in the directory where `bedrock_server.exe` is located.
+
+3. **Run the application:**
     ```bash
     python main.py
     ```
@@ -33,7 +36,7 @@
    - Commands will be sent to the server, and their output will be displayed in the console.
 
 3. **Remote Access:**
-   - The RCON server listens on `127.0.0.1:25575` by default. You can connect using any RCON client using the configured password.
+   - The RCON server listens on `127.0.0.1:25575` by default. You can connect using any RCON client with the configured password.
 
 ## RCON Protocol and Limitations
 
