@@ -191,75 +191,120 @@ def start_server(input_queue, log_box, root, buttons):
 # Function to stop the server
 def stop_server(input_queue, log_box):
     input_queue.put("stop")
-    input_queue.put("stop")  # Tambahkan perintah stop kedua
+    input_queue.put("stop")  # Add the stop command again
     log_box.insert(tk.END, "Stopping server...\n")
     log_box.yview(tk.END)
 
 # Function to restart the server
 def restart_server(input_queue, log_box, root, buttons):
     stop_server(input_queue, log_box)
-    stop_server(input_queue, log_box)  # Tambahkan perintah stop kedua
+    stop_server(input_queue, log_box)  # Add the stop command again
     log_box.insert(tk.END, "Restarting server...\n")
     log_box.yview(tk.END)
     # Ensure restart is handled properly
     root.after(1000, lambda: start_server(input_queue, log_box, root, buttons))
+
+# Function to handle exit with countdown
+def exit_with_countdown(input_queue, log_box, root, buttons):
+    # Check if the server is running
+    if buttons['stop'].cget('state') == tk.DISABLED:  # Server is not running
+        log_box.insert(tk.END, "Server is not running. Exiting immediately...\n")
+        log_box.yview(tk.END)
+        root.destroy()  # Close the application immediately
+        return
+
+    stop_server(input_queue, log_box)  # Send stop command
+    stop_server(input_queue, log_box)  # Send stop command again
+    log_box.insert(tk.END, "Stopping server...\n")
+    log_box.yview(tk.END)
+
+    # Countdown function
+    def countdown(n):
+        if n >= 0:
+            log_box.insert(tk.END, f"Exiting in {n}...\n")
+            log_box.yview(tk.END)
+            root.after(1000, countdown, n - 1)  # Call countdown every second
+        else:
+            root.destroy()  # Close the application
+
+    # Start countdown after receiving "Quit correctly" message
+    def check_quit_message():
+        if "Quit correctly" in log_box.get("1.0", tk.END):
+            countdown(1)  # Change countdown to 1 second
+
+    root.after(1000, check_quit_message)  # Check for quit message after 1 second
+
+# Ensure proper shutdown of processes
+def on_exit(root, buttons, log_box):  # Add log_box as a parameter
+    exit_with_countdown(input_queue, log_box, root, buttons)  # Call exit_with_countdown function
 
 # Creating the GUI
 def create_gui(input_queue):
     root = tk.Tk()
     root.title("Bedrock Server Console")
 
-    # Apply dark theme with modern aesthetics
-    root.configure(bg='#333333')
-    root.option_add('*TButton*font', 'Helvetica 10')
-    root.option_add('*TButton*background', '#444444')
-    root.option_add('*TButton*foreground', 'white')
-    root.option_add('*TButton*highlightBackground', '#444444')
-    root.option_add('*TButton*highlightColor', 'black')
-    root.option_add('*TLabel*foreground', 'white')
-    root.option_add('*TLabel*background', '#333333')
-    root.option_add('*TEntry*background', '#555555')
-    root.option_add('*TEntry*foreground', 'white')
+    # Apply modern aesthetics
+    root.configure(bg='#2E2E2E')  # Darker background for a modern look
+    root.geometry("800x600")  # Set a proportional window size
+    root.resizable(False, False)  # Disable resizing
 
-    log_box = scrolledtext.ScrolledText(root, state='disabled', height=20, width=120, bg='#222222', fg='white', insertbackground='white', borderwidth=2, relief="groove")
+    # Fullscreen toggle
+    def toggle_fullscreen():
+        is_fullscreen = root.attributes('-fullscreen')
+        root.attributes('-fullscreen', not is_fullscreen)
+
+    # Button styles with rounded corners
+    button_style = {
+        'font': ('Helvetica', 12),
+        'bg': '#5A5A5A',  # Softer button color
+        'fg': 'white',
+        'activebackground': '#6A6A6A',
+        'borderwidth': 0,
+        'relief': 'flat'
+    }
+
+    log_box = scrolledtext.ScrolledText(root, state='disabled', height=20, width=100, bg='#222222', fg='white', insertbackground='white', borderwidth=2, relief="groove")
     log_box.configure(font='TkFixedFont')
-    log_box.pack(padx=10, pady=10)
+    log_box.pack(padx=20, pady=20)
 
-    cmd_input = tk.Entry(root, width=100, bg='#444444', fg='white', insertbackground='white', borderwidth=2, relief="groove")
-    cmd_input.pack(padx=10, pady=5)
+    cmd_input = tk.Entry(root, width=80, bg='#444444', fg='white', insertbackground='white', borderwidth=2, relief="groove")
+    cmd_input.pack(padx=20, pady=10)
 
     buttons = {}
 
     # Button handler functions
-    def handle_send():
+    def handle_send(event=None):  # Allow event parameter for Enter key
         command = cmd_input.get()
-        input_queue.put(command)
-        cmd_input.delete(0, tk.END)
+        if command:  # Check if command is not empty
+            input_queue.put(command)
+            cmd_input.delete(0, tk.END)
 
-    buttons['send'] = tk.Button(root, text="Send Command", command=handle_send)
-    buttons['send'].pack(side=tk.LEFT, padx=10, pady=5)
+    # Send Command Button
+    buttons['send'] = tk.Button(root, text="Send Command", command=handle_send, **button_style)
+    buttons['send'].pack(padx=20, pady=(0, 10))  # Adjust padding
 
-    buttons['start'] = tk.Button(root, text="Start Server", command=lambda: start_server(input_queue, log_box, root, buttons))
-    buttons['start'].pack(side=tk.LEFT, padx=10, pady=5)
+    buttons['start'] = tk.Button(root, text="Start Server", command=lambda: start_server(input_queue, log_box, root, buttons), **button_style)
+    buttons['start'].pack(side=tk.LEFT, padx=10, pady=10)
 
-    buttons['stop'] = tk.Button(root, text="Stop Server", command=lambda: stop_server(input_queue, log_box))
-    buttons['stop'].pack(side=tk.LEFT, padx=10, pady=5)
+    buttons['stop'] = tk.Button(root, text="Stop Server", command=lambda: stop_server(input_queue, log_box), **button_style)
+    buttons['stop'].pack(side=tk.LEFT, padx=10, pady=10)
     buttons['stop'].config(state=tk.DISABLED)
 
-    buttons['restart'] = tk.Button(root, text="Restart Server", command=lambda: restart_server(input_queue, log_box, root, buttons))
-    buttons['restart'].pack(side=tk.LEFT, padx=10, pady=5)
+    buttons['restart'] = tk.Button(root, text="Restart Server", command=lambda: restart_server(input_queue, log_box, root, buttons), **button_style)
+    buttons['restart'].pack(side=tk.LEFT, padx=10, pady=10)
     buttons['restart'].config(state=tk.DISABLED)
 
-    buttons['exit'] = tk.Button(root, text="Exit", command=lambda: on_exit(root, buttons))
-    buttons['exit'].pack(side=tk.RIGHT, padx=10, pady=5)
+    # Add label for fullscreen information
+    fullscreen_info = tk.Label(root, text="Press F11 for Fullscreen", bg='#2E2E2E', fg='white', font=('Helvetica', 10))
+    fullscreen_info.pack(side=tk.BOTTOM, anchor='w', padx=10, pady=10)
 
-    # Ensure proper shutdown of processes
-    def on_exit(root, buttons):
-        if buttons['stop'].cget('state') == tk.NORMAL:
-            stop_server(input_queue, log_box)
-        root.destroy()
+    # Bind F11 key to toggle fullscreen
+    root.bind('<F11>', lambda event: toggle_fullscreen())
 
-    root.protocol("WM_DELETE_WINDOW", lambda: on_exit(root, buttons))
+    # Bind Ctrl+Q to exit the application with countdown
+    root.bind('<Control-q>', lambda event: exit_with_countdown(input_queue, log_box, root, buttons))
+    root.protocol("WM_DELETE_WINDOW", lambda: on_exit(root, buttons, log_box))  # Handle window closing
+
     root.mainloop()
 
 if __name__ == '__main__':
