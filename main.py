@@ -15,6 +15,7 @@ RCON_PACKET_TYPE = {
     'SERVERDATA_RESPONSE_VALUE': 0
 }
 
+# Functions for handling RCON communication
 def send_packet(client_socket, packet_type, request_id, body=''):
     size = len(body) + 14
     packet = struct.pack(
@@ -40,6 +41,7 @@ def recv_packet(client_socket):
     
     return request_id, packet_type, body
 
+# Thread handling RCON client connections
 def client_handler(client_socket, client_address, input_queue):
     print(f"New connection from {client_address}")
     try:
@@ -71,6 +73,7 @@ def client_handler(client_socket, client_address, input_queue):
     finally:
         client_socket.close()
 
+# RCON server thread
 def rcon_server(input_queue):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -87,7 +90,11 @@ def rcon_server(input_queue):
     finally:
         server_socket.close()
 
-def run_server(input_queue, log_box, root):
+def run_server(input_queue, log_box, root, buttons):
+    buttons['start'].config(state=tk.DISABLED)
+    buttons['stop'].config(state=tk.NORMAL)
+    buttons['restart'].config(state=tk.DISABLED)
+
     proc = subprocess.Popen(
         "bedrock_server.exe",
         stdin=subprocess.PIPE,
@@ -98,78 +105,167 @@ def run_server(input_queue, log_box, root):
         universal_newlines=True
     )
 
-    output_thread = threading.Thread(target=read_output, args=(proc, log_box, root))
+    output_thread = threading.Thread(target=read_output, args=(proc, log_box, root, buttons))
     output_thread.daemon = True
     output_thread.start()
 
     while True:
-        command = input_queue.get()
-        if command is None:
+        try:
+            command = input_queue.get()
+            if command is None:
+                break
+            if proc.poll() is not None:  # Check if process has terminated
+                raise RuntimeError("The process has terminated unexpectedly.")
+            proc.stdin.write(command + "\n")
+            proc.stdin.flush()
+        except RuntimeError as e:
+            print(f"Error while sending command: {e}")
+            root.after(0, update_log_text, log_box, "🦋 Since you restarted/stop or start again the server, you are receiving this message. You can continue sending commands. ✨\n")
             break
-        proc.stdin.write(command + "\n")
-        proc.stdin.flush()
+        except Exception as e:
+            print(f"Error while sending command: {e}")
+            root.after(0, update_log_text, log_box, "An unexpected error occurred. Please try sending the command again.\n")
 
     proc.terminate()
+    proc.wait()  # Wait for the process to terminate cleanly
 
-def read_output(proc, log_box, root):
+# Thread for reading server output
+def read_output(proc, log_box, root, buttons):
+    server_running = False
     while True:
         line = proc.stdout.readline()
         if line:
             root.after(0, update_log_text, log_box, line)
+            if "Starting Server" in line:
+                if not server_running:
+                    root.after(0, on_starting_server, buttons)
+                    server_running = True
+            elif "Server started." in line:
+                if server_running:
+                    root.after(0, on_server_started, buttons)
+                    server_running = False
+            elif "Quit correctly" in line:
+                if not server_running:
+                    root.after(0, enable_start_restart_buttons, buttons)
+            elif "Stopping server..." in line:
+                root.after(0, disable_all_buttons, buttons)
         else:
             break
 
+# Updating the log text in the GUI
 def update_log_text(log_box, line):
     log_box.configure(state='normal')
     log_box.insert(tk.END, line)
     log_box.configure(state='disabled')
     log_box.yview(tk.END)
 
+# Enabling start and restart buttons
+def enable_start_restart_buttons(buttons):
+    buttons['start'].config(state=tk.NORMAL)
+    buttons['restart'].config(state=tk.NORMAL)
+    buttons['stop'].config(state=tk.DISABLED)
+
+# Disabling all buttons
+def disable_all_buttons(buttons):
+    buttons['start'].config(state=tk.DISABLED)
+    buttons['stop'].config(state=tk.DISABLED)
+    buttons['restart'].config(state=tk.DISABLED)
+
+# Disable buttons when server is starting
+def on_starting_server(buttons):
+    buttons['start'].config(state=tk.DISABLED)
+    buttons['restart'].config(state=tk.DISABLED)
+    buttons['stop'].config(state=tk.NORMAL)
+
+# Enable restart button when server is started
+def on_server_started(buttons):
+    buttons['restart'].config(state=tk.NORMAL)
+    buttons['stop'].config(state=tk.NORMAL)
+
+# Function to start the server
+def start_server(input_queue, log_box, root, buttons):
+    server_thread = threading.Thread(target=run_server, args=(input_queue, log_box, root, buttons))
+    server_thread.daemon = True
+    server_thread.start()
+
+# Function to stop the server
+def stop_server(input_queue, log_box):
+    input_queue.put("stop")
+    input_queue.put("stop")  # Tambahkan perintah stop kedua
+    log_box.insert(tk.END, "Stopping server...\n")
+    log_box.yview(tk.END)
+
+# Function to restart the server
+def restart_server(input_queue, log_box, root, buttons):
+    stop_server(input_queue, log_box)
+    stop_server(input_queue, log_box)  # Tambahkan perintah stop kedua
+    log_box.insert(tk.END, "Restarting server...\n")
+    log_box.yview(tk.END)
+    # Ensure restart is handled properly
+    root.after(1000, lambda: start_server(input_queue, log_box, root, buttons))
+
+# Creating the GUI
 def create_gui(input_queue):
     root = tk.Tk()
     root.title("Bedrock Server Console")
 
-    # Apply dark theme
-    root.configure(bg='#2e2e2e')
+    # Apply dark theme with modern aesthetics
+    root.configure(bg='#333333')
     root.option_add('*TButton*font', 'Helvetica 10')
-    root.option_add('*TButton*background', '#3e3e3e')
+    root.option_add('*TButton*background', '#444444')
     root.option_add('*TButton*foreground', 'white')
-    root.option_add('*TButton*highlightBackground', '#2e2e2e')
+    root.option_add('*TButton*highlightBackground', '#444444')
     root.option_add('*TButton*highlightColor', 'black')
     root.option_add('*TLabel*foreground', 'white')
-    root.option_add('*TLabel*background', '#2e2e2e')
-    root.option_add('*TEntry*background', '#3e3e3e')
+    root.option_add('*TLabel*background', '#333333')
+    root.option_add('*TEntry*background', '#555555')
     root.option_add('*TEntry*foreground', 'white')
 
-    log_box = scrolledtext.ScrolledText(root, state='disabled', height=20, width=120, bg='#1e1e1e', fg='white', insertbackground='white')
+    log_box = scrolledtext.ScrolledText(root, state='disabled', height=20, width=120, bg='#222222', fg='white', insertbackground='white', borderwidth=2, relief="groove")
     log_box.configure(font='TkFixedFont')
     log_box.pack(padx=10, pady=10)
 
-    cmd_input = tk.Entry(root, width=100, bg='#3e3e3e', fg='white', insertbackground='white')
+    cmd_input = tk.Entry(root, width=100, bg='#444444', fg='white', insertbackground='white', borderwidth=2, relief="groove")
     cmd_input.pack(padx=10, pady=5)
 
+    buttons = {}
+
+    # Button handler functions
     def handle_send():
         command = cmd_input.get()
         input_queue.put(command)
         cmd_input.delete(0, tk.END)
 
-    send_button = tk.Button(root, text="Send Command", command=handle_send)
-    send_button.pack(side=tk.LEFT, padx=10)
+    buttons['send'] = tk.Button(root, text="Send Command", command=handle_send)
+    buttons['send'].pack(side=tk.LEFT, padx=10, pady=5)
 
-    exit_button = tk.Button(root, text="Exit", command=root.destroy)
-    exit_button.pack(side=tk.RIGHT, padx=10)
+    buttons['start'] = tk.Button(root, text="Start Server", command=lambda: start_server(input_queue, log_box, root, buttons))
+    buttons['start'].pack(side=tk.LEFT, padx=10, pady=5)
 
-    server_thread = threading.Thread(target=run_server, args=(input_queue, log_box, root))
-    server_thread.daemon = True
-    server_thread.start()
+    buttons['stop'] = tk.Button(root, text="Stop Server", command=lambda: stop_server(input_queue, log_box))
+    buttons['stop'].pack(side=tk.LEFT, padx=10, pady=5)
+    buttons['stop'].config(state=tk.DISABLED)
 
+    buttons['restart'] = tk.Button(root, text="Restart Server", command=lambda: restart_server(input_queue, log_box, root, buttons))
+    buttons['restart'].pack(side=tk.LEFT, padx=10, pady=5)
+    buttons['restart'].config(state=tk.DISABLED)
+
+    buttons['exit'] = tk.Button(root, text="Exit", command=lambda: on_exit(root, buttons))
+    buttons['exit'].pack(side=tk.RIGHT, padx=10, pady=5)
+
+    # Ensure proper shutdown of processes
+    def on_exit(root, buttons):
+        if buttons['stop'].cget('state') == tk.NORMAL:
+            stop_server(input_queue, log_box)
+        root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", lambda: on_exit(root, buttons))
     root.mainloop()
 
 if __name__ == '__main__':
     input_queue = queue.Queue()
-
-    rcon_server_thread = threading.Thread(target=rcon_server, args=(input_queue,))
-    rcon_server_thread.daemon = True
-    rcon_server_thread.start()
+    rcon_thread = threading.Thread(target=rcon_server, args=(input_queue,))
+    rcon_thread.daemon = True
+    rcon_thread.start()
 
     create_gui(input_queue)
