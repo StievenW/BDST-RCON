@@ -41,8 +41,6 @@
 
 The RCON protocol, as implemented in this project, has the following limitations:
 - **No Response from Bedrock Server:** The Bedrock Edition server's RCON implementation does not provide responses for many commands. This is a limitation of the server software itself, not the RCON client or server in this project.
-- **Limited Command Support:** Not all server commands support output via RCON, so you may not receive feedback for certain commands.
-- **Connection Handling:** The server can only handle a limited number of concurrent RCON connections.
 
 ## Configuration
 
