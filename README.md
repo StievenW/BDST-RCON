@@ -46,7 +46,7 @@ The RCON protocol, as implemented in this project, has the following limitations
 
 ## Configuration
 
-You can modify the following variables in the `bdst_rcon.py` file to suit your setup:
+You can modify the following variables in the `main.py` file to suit your setup:
 - **HOST:** The IP address on which the RCON server listens (default: `127.0.0.1`).
 - **PORT:** The port on which the RCON server listens (default: `25575`).
 - **PASSWORD:** The RCON password for authentication.
