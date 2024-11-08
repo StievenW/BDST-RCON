@@ -38,12 +38,13 @@
 3. **Remote Access:**
    - The RCON server listens on `127.0.0.1:25575` by default. You can connect using any RCON client with the configured password.
 
-## RCON Protocol and Limitations
-
-### Limitations of RCON
+## RCON Protocol and Limitations  
+### Limitations of RCON  
 
 The RCON protocol, as implemented in this project, has the following limitations:
-- **No Response from Bedrock Server:** The Bedrock Edition server's RCON implementation does not provide responses for many commands. This is a limitation of the server software itself, not the RCON client or server in this project.
+
+**No Response from Bedrock Server:**  
+In this project, commands are sent directly to the `bedrock_server.exe` without using a Proxy Server.
 
 ## Configuration
 
