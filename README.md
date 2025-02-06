@@ -17,7 +17,7 @@
     cd BDST-RCON
     ```
 
-2. **Place `main.py` in the same folder as `bedrock_server.exe`:**
+2. **Place `main.py` & `config.py` in the same folder as `bedrock_server.exe`:**
    Ensure that `main.py` is located in the directory where `bedrock_server.exe` is located.
 
 3. **Run the application:**
