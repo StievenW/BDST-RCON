@@ -48,7 +48,7 @@ In this project, commands are sent directly to the `bedrock_server.exe` without 
 
 ## Configuration
 
-You can modify the following variables in the `main.py` file to suit your setup:
+You can modify the following variables in the `main.py` or `config.py` file to suit your setup:
 - **HOST:** The IP address on which the RCON server listens (default: `127.0.0.1`).
 - **PORT:** The port on which the RCON server listens (default: `25575`).
 - **PASSWORD:** The RCON password for authentication.
