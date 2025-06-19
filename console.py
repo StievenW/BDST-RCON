@@ -122,12 +122,12 @@ def run_server(input_queue):
             if command is None:
                 break
             if proc.poll() is not None:
-                raise RuntimeError("The process has terminated unexpectedly.")
+                os._exit(0)
             proc.stdin.write(command + "\n")
             proc.stdin.flush()
         except RuntimeError as e:
             print(f"Error while sending command: {e}")
-            break
+            os._exit(0)
         except Exception as e:
             print(f"Unknown command: {command}. Please check that the command exists and that you have permission to use it.")
             try:
@@ -138,6 +138,7 @@ def run_server(input_queue):
                 print(f"Unknown command: {command}. Please check that the command exists and that you have permission to use it.")
     proc.terminate()
     proc.wait()
+    os._exit(0)
 
 def read_output(proc):
     server_running = False
@@ -186,3 +187,4 @@ if __name__ == '__main__':
             input_queue.put(command)
     except KeyboardInterrupt:
         stop_server(input_queue)
+    os._exit(0)
