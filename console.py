@@ -3,11 +3,28 @@ import threading
 import socket
 import queue
 import struct
-import config
 import ftfy
 import os
 import sys
 import re
+import time
+
+try:
+    import config
+except (ModuleNotFoundError, FileNotFoundError):
+    print("config.py not found.")
+    answer = input("Create a new config.py? (y/n): ").strip().lower()
+    if answer != 'y':
+        print("Exiting program because config.py is missing.")
+        os._exit(0)
+    host = input("Host [default: 127.0.0.1]: ").strip() or '127.0.0.1'
+    port_input = input("Port [default: 25575]: ").strip()
+    port = int(port_input) if port_input else 25575
+    password = input("Password [default: yourpassword]: ").strip() or 'yourpassword'
+    with open('config.py', 'w', encoding='utf-8') as f:
+        f.write(f"# config.py\nHOST = '{host}'\nPORT = {port}\nPASSWORD = '{password}'\n")
+    print("config.py created successfully. Please restart the program.")
+    os._exit(0)
 
 os.environ["PYTHONIOENCODING"] = "utf-8"
 if hasattr(sys.stdout, 'reconfigure'):
@@ -32,7 +49,33 @@ def mc_color_to_ansi(text):
     def repl(match):
         code = match.group(1).lower()
         return MC_COLOR_TO_ANSI.get(code, '')
-    return re.sub(r'§([0-9a-frlonmk])', repl, text, flags=re.IGNORECASE) + '\033[0m'
+    import re
+    # Terapkan color code Minecraft per baris dan pastikan reset di akhir setiap baris
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if '§' in line:
+            line = re.sub(r'§([0-9a-frlonmk])', repl, line, flags=re.IGNORECASE)
+        # Reset warna di akhir setiap baris
+        line += '\033[0m'
+        lines[i] = line
+    text = '\n'.join(lines)
+    # Highlight log line seperti di client
+    def colorize_log(match):
+        timestamp = match.group(1)
+        level = match.group(2).upper()
+        rest = match.group(3)
+        ts_col = '\033[96m' + timestamp + '\033[0m'
+        if level == 'ERROR':
+            lvl_col = '\033[91m' + level + '\033[0m'
+        elif level == 'INFO':
+            lvl_col = '\033[97m' + level + '\033[0m'
+        elif level in ('WARN', 'WARNING'):
+            lvl_col = '\033[93m' + level + '\033[0m'
+        else:
+            lvl_col = level
+        return f"[{ts_col} {lvl_col}]{rest}"
+    text = re.sub(r'\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}:\d{3}) (ERROR|INFO|WARN|WARNING)](.*)', colorize_log, text)
+    return text
 
 def send_packet(client_socket, packet_type, request_id, body=''):
     body_bytes = body.encode('utf-8')
@@ -57,6 +100,43 @@ def recv_packet(client_socket):
     body = ftfy.fix_text(body_bytes.decode('utf-8', errors='replace'))
     return request_id, packet_type, body
 
+# Buffer untuk output bedrock_server
+output_buffer = []  # List of (timestamp, line)
+output_buffer_lock = threading.Lock()
+
+# Untuk menandai command dari client (agar output tidak tampil di console)
+client_command_flag = threading.Event()
+
+# Untuk response client
+rcon_response_queue = queue.Queue()
+
+# Thread untuk membaca output bedrock_server secara periodik
+
+def output_reader(proc):
+    while True:
+        line = proc.stdout.readline()
+        if not line:
+            break
+        fixed_line = ftfy.fix_text(line.rstrip())
+        now = time.time()
+        with output_buffer_lock:
+            output_buffer.append((now, fixed_line))
+        # Jika bukan command dari client, tampilkan ke console
+        if not client_command_flag.is_set():
+            print(mc_color_to_ansi(fixed_line))
+
+# Ambil output bedrock_server setelah waktu tertentu
+
+def get_output_since(ts, timeout=0.3):
+    time.sleep(timeout)  # Tunggu output terkumpul
+    now = time.time()
+    lines = []
+    with output_buffer_lock:
+        for t, line in output_buffer:
+            if t >= ts:
+                lines.append(line)
+    return '\n'.join(lines)
+
 def client_handler(client_socket, client_address, input_queue):
     print(f"New connection from {client_address}")
     try:
@@ -77,13 +157,19 @@ def client_handler(client_socket, client_address, input_queue):
         while True:
             request_id, packet_type, command_data = recv_packet(client_socket)
             if packet_type == RCON_PACKET_TYPE['SERVERDATA_EXECCOMMAND'] and command_data:
-                print(f"Received command from {client_address}")
+                # Tandai command dari client
+                client_command_flag.set()
+                ts = time.time()
                 input_queue.put(command_data)
-                send_packet(client_socket, RCON_PACKET_TYPE['SERVERDATA_RESPONSE_VALUE'], request_id)
+                response = get_output_since(ts, timeout=0.3)
+                send_packet(client_socket, RCON_PACKET_TYPE['SERVERDATA_RESPONSE_VALUE'], request_id, response)
+                client_command_flag.clear()
             else:
                 break
     except ConnectionResetError:
         print(f"Connection lost from {client_address}")
+    except Exception as e:
+        print(f"Error in client_handler: {e}")
     finally:
         client_socket.close()
 
@@ -113,7 +199,8 @@ def run_server(input_queue):
         universal_newlines=True,
         encoding='utf-8'
     )
-    output_thread = threading.Thread(target=read_output, args=(proc,))
+    # Thread untuk membaca output secara periodik
+    output_thread = threading.Thread(target=output_reader, args=(proc,))
     output_thread.daemon = True
     output_thread.start()
     while True:
@@ -139,29 +226,6 @@ def run_server(input_queue):
     proc.terminate()
     proc.wait()
     os._exit(0)
-
-def read_output(proc):
-    server_running = False
-    while True:
-        line = proc.stdout.readline()
-        if line:
-            fixed_line = ftfy.fix_text(line.strip())
-            print(mc_color_to_ansi(fixed_line))
-            if "Starting Server" in line:
-                if not server_running:
-                    print("Server is starting...")
-                    server_running = True
-            elif "Server started." in line:
-                if server_running:
-                    print("Server has started.")
-                    server_running = False
-            elif "Quit correctly" in line:
-                if not server_running:
-                    print("Server stopped correctly.")
-            elif "Stopping server..." in line:
-                print("Stopping server...")
-        else:
-            break
 
 def stop_server(input_queue):
     input_queue.put("stop")
