@@ -1,6 +1,7 @@
 import os
 import sys
 
+
 try:
     import config
 except (ModuleNotFoundError, FileNotFoundError):
@@ -14,7 +15,7 @@ except (ModuleNotFoundError, FileNotFoundError):
     port = int(port_input) if port_input else 25575
     password = input("Password [default: yourpassword]: ").strip() or 'yourpassword'
     with open('config.py', 'w', encoding='utf-8') as f:
-        f.write(f"HOST = '{host}'\nPORT = {port}\nPASSWORD = '{password}'\n")
+        f.write(f"# config.py\nHOST = '{host}'\nPORT = {port}\nPASSWORD = '{password}'\n")
     print("config.py created successfully. Please restart the program.")
     os._exit(0)
 
@@ -33,6 +34,7 @@ def recv_packet(sock):
         while len(buffer) < num_bytes:
             fragment = sock.recv(num_bytes - len(buffer))
             if not fragment:
+
                 return None
             buffer += fragment
         return buffer
