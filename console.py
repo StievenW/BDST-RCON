@@ -8,7 +8,7 @@ import os
 import sys
 import re
 import time
-import webbrowser  # Add this import
+import webbrowser
 
 def create_config():
     host = input("Host [default: 127.0.0.1]: ").strip() or '127.0.0.1'
@@ -23,9 +23,9 @@ def create_config():
 def load_config():
     """Load config from executable directory or current directory"""
     config_paths = [
-        os.path.join(os.path.dirname(sys.executable), 'config.py'),  # exe directory
-        os.path.join(os.getcwd(), 'config.py'),  # current directory
-        'config.py'  # fallback
+        os.path.join(os.path.dirname(sys.executable), 'config.py'),
+        os.path.join(os.getcwd(), 'config.py'),
+        'config.py'
     ]
     
     for config_path in config_paths:
@@ -51,7 +51,7 @@ except Exception as e:
         
     host, port, password = create_config()
     
-    # Create a temporary config module
+
     import types
     config = types.ModuleType('config')
     config.HOST = host
@@ -99,25 +99,25 @@ def mc_color_to_ansi(text):
             lvl_col = level
         
 
-        # Other patterns remain unchanged
-        rest = re.sub(r'(Session ID: )([a-f0-9-]+)', r'\1\033[93m\2\033[0m', rest)  # Yellow for Session ID
-        rest = re.sub(r'(Build ID: )(\d+)', r'\1\033[92m\2\033[0m', rest)  # Green for Build ID
-        rest = re.sub(r'(Branch: )([^\s]+)', r'\1\033[94m\2\033[0m', rest)  # Blue for Branch
-        rest = re.sub(r'(Commit ID: )([a-f0-9]+)', r'\1\033[95m\2\033[0m', rest)  # Magenta for Commit ID
-        rest = re.sub(r'Level Name: (.*?)(?=\s*$|\s+\w+:)', r'Level Name: \033[96m\1\033[0m', rest)  # Cyan for full Level Name
-        rest = re.sub(r'(Game mode: )(\d+\s+[^\s]+)', r'\1\033[92m\2\033[0m', rest)  # Green for Game mode
-        rest = re.sub(r'(Difficulty: )(\d+\s+[^\s]+)', r'\1\033[93m\2\033[0m', rest)  # Yellow for Difficulty
-        rest = re.sub(r'(port: )(\d+)', r'\1\033[92m\2\033[0m', rest)  # Green for port numbers
-        rest = re.sub(r'(RCON server listening on )([^\s]+)', r'\1\033[97m\2\033[0m', rest)  # Bright White for RCON
+
+        rest = re.sub(r'(Session ID: )([a-f0-9-]+)', r'\1\033[93m\2\033[0m', rest)
+        rest = re.sub(r'(Build ID: )(\d+)', r'\1\033[92m\2\033[0m', rest)
+        rest = re.sub(r'(Branch: )([^\s]+)', r'\1\033[94m\2\033[0m', rest)
+        rest = re.sub(r'(Commit ID: )([a-f0-9]+)', r'\1\033[95m\2\033[0m', rest)
+        rest = re.sub(r'Level Name: (.*?)(?=\s*$|\s+\w+:)', r'Level Name: \033[96m\1\033[0m', rest)
+        rest = re.sub(r'(Game mode: )(\d+\s+[^\s]+)', r'\1\033[92m\2\033[0m', rest)
+        rest = re.sub(r'(Difficulty: )(\d+\s+[^\s]+)', r'\1\033[93m\2\033[0m', rest)
+        rest = re.sub(r'(port: )(\d+)', r'\1\033[92m\2\033[0m', rest)
+        rest = re.sub(r'(RCON server listening on )([^\s]+)', r'\1\033[97m\2\033[0m', rest)
         
         return f"[{ts_col} {lvl_col}]{rest}"
     
-    # Terapkan color code Minecraft per baris dan pastikan reset di akhir setiap baris
+
     lines = text.splitlines()
     for i, line in enumerate(lines):
         if '§' in line:
             line = re.sub(r'§([0-9a-frlonmk])', repl, line, flags=re.IGNORECASE)
-        # Reset warna di akhir setiap baris
+
         line += '\033[0m'
         lines[i] = line
     text = '\n'.join(lines)
@@ -147,7 +147,7 @@ def recv_packet(client_socket):
     body = ftfy.fix_text(body_bytes.decode('utf-8', errors='replace'))
     return request_id, packet_type, body
 
-output_buffer = []  # List of (timestamp, line)
+output_buffer = []
 output_buffer_lock = threading.Lock()
 
 client_command_flag = threading.Event()
@@ -178,16 +178,16 @@ def scan_playit_tunnel(playit_log_file, target_port):
     port_mismatch_notified = False
     tunnel_already_verified = False
     
-    # Add global state tracking
+
     if not hasattr(scan_playit_tunnel, 'tunnel_setup_state'):
         scan_playit_tunnel.tunnel_setup_state = {'verified': False, 'tunnel_info': None}
     
-    # If already verified, return cached info
+
     if scan_playit_tunnel.tunnel_setup_state['verified']:
         return scan_playit_tunnel.tunnel_setup_state['tunnel_info']
     
     while True:
-        # Wait for playit log to be created and populated
+
         if not os.path.exists(playit_log_file.name):
             time.sleep(1)
             continue
@@ -195,7 +195,7 @@ def scan_playit_tunnel(playit_log_file, target_port):
         with open(playit_log_file.name, 'r') as f:
             content = f.read()
             
-            # Step 1: Check if there's already a matching tunnel (success case)
+
             tunnel_pattern = r'(?:connection-forget|[a-zA-Z0-9.-]+)\.(?:gl\.at\.)?ply\.gg:\d+\s*=>\s*127\.0\.0\.1:' + str(target_port)
             tunnel_match = re.search(tunnel_pattern, content)
             if tunnel_match:
@@ -205,11 +205,11 @@ def scan_playit_tunnel(playit_log_file, target_port):
                 print(f"\033[92mPlayit.gg tunnel found: {tunnel_match.group(0)} -> {target_port}\033[0m")
                 return tunnel_info
 
-            # Step 2: Check if agent is registered by looking for tunnels info
+
             if 'tunnel running,' in content:
-                # Agent is registered, check tunnel status
+
                 if 'tunnel running, 0 tunnels registered' in content:
-                    # No tunnels configured
+
                     if not port_mismatch_notified:
                         port_mismatch_notified = True
                         print(f"\n\033[91mWarning: No tunnel configured for port {target_port}\033[0m")
@@ -217,14 +217,14 @@ def scan_playit_tunnel(playit_log_file, target_port):
                         print("\033[92mhttps://playit.gg/account/tunnels\033[0m")
                         webbrowser.open("https://playit.gg/account/tunnels")
                 else:
-                    # Check for wrong port configurations
+
                     wrong_port = re.search(r'127\.0\.0\.1:(\d+)', content)
                     if wrong_port and int(wrong_port.group(1)) != target_port:
                         print(f"\n\033[91mWarning: Found tunnel with wrong port {wrong_port.group(1)}, need port {target_port}\033[0m")
                         print("\033[93mPlease update tunnel configuration\033[0m")
                         webbrowser.open("https://playit.gg/account/tunnels")
 
-            # Step 3: Only show agent setup if needed
+
             elif 'Visit link to setup' in content:
                 setup_url = re.search(r'(https://playit\.gg/claim/[a-zA-Z0-9]+)', content)
                 if setup_url and not setup_detected:
@@ -246,7 +246,7 @@ def output_reader(proc, playit_log):
     server_port = get_server_port()
     playit_initialized = False
     tunnel_setup_done = False
-    initial_check_done = False  # Add flag for initial check
+    initial_check_done = False
     
     def resolve_domain(host):
         try:
@@ -271,11 +271,11 @@ def output_reader(proc, playit_log):
                         return match.group(1)
             return None
         
-        # Keep checking until tunnel is found
+
         tunnel = check_tunnel()
         if not tunnel:
             print("\033[93mWaiting for tunnel to be ready...\033[0m")
-            max_attempts = 30  # 30 seconds timeout
+            max_attempts = 30
             for _ in range(max_attempts):
                 with open(playit_log.name, 'r') as f:
                     new_content = f.read()
@@ -294,22 +294,18 @@ def output_reader(proc, playit_log):
         fixed_line = ftfy.fix_text(line.rstrip())
         now = time.time()
         
-        # Only process each unique line once
         if fixed_line not in seen_lines:
             seen_lines.add(fixed_line)
             
-            # For normal server output
             with output_buffer_lock:
                 output_buffer.append((now, fixed_line))
             if not client_command_flag.is_set():
                 print(mc_color_to_ansi(fixed_line))
             
-            # Check for server started message
             if "Server started." in fixed_line and not server_started:
                 server_started = True
                 time.sleep(0.1)
                 
-                # Show RCON message
                 if not rcon_announced:
                     rcon_announced = True
                     rcon_msg = f"[{get_timestamp()} INFO] RCON server listening on {config.HOST}:{config.PORT}"
@@ -318,46 +314,44 @@ def output_reader(proc, playit_log):
                     if not client_command_flag.is_set():
                         print(mc_color_to_ansi(rcon_msg))
                 
-                # Only check playit.gg once after server start
                 if playit_log and server_port and not initial_check_done:
                     try:
                         initial_check_done = True
-                        # Read current playit log content
                         with open(playit_log.name, 'r') as f:
                             playit_content = f.read()
                         
-                        # Find matching tunnel
                         tunnel_addr = parse_playit_tunnel(playit_content, server_port)
                         if tunnel_addr:
                             host, port = tunnel_addr.split(':')
                             
-                            # Format address messages with a single banner
                             banner = f"[{get_timestamp()} INFO] =================== PUBLIC ADDRESS ===================" 
                             addr_msg = f"[{get_timestamp()} INFO] Server Address: {host}:{port} (🌐)"
                             
-                            # Add IP if resolvable
                             ip = resolve_domain(host)
                             ip_msg = f"[{get_timestamp()} INFO] Server IP: {ip}" if ip else None
                             
-                            # Add to buffer and print in order
                             with output_buffer_lock:
                                 output_buffer.append((now, banner))
                                 output_buffer.append((now, addr_msg))
                                 if ip_msg:
                                     output_buffer.append((now, ip_msg))
                                 
-                                # Print messages
                                 if not client_command_flag.is_set():
                                     print(mc_color_to_ansi(banner))
                                     print(mc_color_to_ansi(addr_msg))
                                     if ip_msg:
                                         print(mc_color_to_ansi(ip_msg))
+                                        
+
+                            if playit_log:
+                                playit_log.clear_contents()
+                            
                     except Exception as e:
                         print(f"Error getting server address info: {e}")
 
 
-def get_output_since(ts, timeout=1.0):  # Increased timeout
-    time.sleep(timeout)  # Wait longer for output to collect
+def get_output_since(ts, timeout=1.0):
+    time.sleep(timeout)
     now = time.time()
     lines = []
     with output_buffer_lock:
@@ -432,35 +426,59 @@ def get_instance_id():
     return hashlib.md5(f"{parent_path}_{folder_name}".encode()).hexdigest()[:8]
 
 def clean_playit_output(line):
-    line = re.sub(r'\x1b8', '', line)  # Remove \x1b8 sequences first
-    line = re.sub(r'\x1b\[[\d;]*[a-zA-Z]', '', line)  # ANSI codes
-    line = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', line)  # Control characters
-    line = re.sub(r'^\s*\d+', '', line)  # Remove leading numbers
+    line = re.sub(r'\x1b8', '', line)
+    line = re.sub(r'\x1b\[[\d;]*[a-zA-Z]', '', line)
+    line = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', line)
+    line = re.sub(r'^\s*\d+', '', line)
     line = line.strip()
     return line if line else ''
 
 class PlayitLogHandler:
     def __init__(self):
         self.name = 'playit.log'
-        self.log_file = open(self.name, 'a+', encoding='utf-8', buffering=1)
+        self.log_file = None
         self.last_message = ''
-        # Read last line if file exists and has content
+        self.is_closed = False
+        self.stop_logging = False
+        self.open_file()
+    
+    def open_file(self):
+        self.log_file = open(self.name, 'a+', encoding='utf-8', buffering=1)
+
         self.log_file.seek(0)
         last_lines = self.log_file.readlines()
         if last_lines:
             self.last_message = last_lines[-1].strip()
-        # Clear file for new session
+
         self.log_file.truncate(0)
+        self.is_closed = False
+        self.stop_logging = False
     
     def write(self, data):
+        if self.is_closed or self.stop_logging:
+            return
         cleaned = clean_playit_output(data)
-        if cleaned and cleaned != self.last_message:  # Only write if different from last message
-            self.log_file.write(cleaned + '\n')
+        if cleaned and cleaned != self.last_message:
+            try:
+                self.log_file.write(cleaned + '\n')
+                self.log_file.flush()
+                self.last_message = cleaned
+            except ValueError:
+                pass
+    
+    def clear_contents(self):
+        """Clear log contents and stop logging"""
+        if not self.is_closed and self.log_file:
+            self.log_file.seek(0)
+            self.log_file.truncate()
             self.log_file.flush()
-            self.last_message = cleaned
+            self.stop_logging = True
     
     def close(self):
-        self.log_file.close()
+        """Close the file handle"""
+        if not self.is_closed and self.log_file:
+            self.is_closed = True
+            self.log_file.close()
 
 def get_playit_dir():
     """Get dedicated playit.gg directory in user's temp folder"""
@@ -481,7 +499,7 @@ def run_playit():
         
         log_handler = PlayitLogHandler()
         
-        # Start playit.gg with minimal settings
+
         playit_process = subprocess.Popen(
             ["playit-windows-x86_64-signed.exe"],
             stdout=subprocess.PIPE,
@@ -517,7 +535,7 @@ def run_playit():
         return None, None
 
 def run_server(input_queue):
-    # Check required files first
+
     files_ok, message = check_required_files()
     if not files_ok:
         print(message)
@@ -530,7 +548,7 @@ def run_server(input_queue):
     server_running = threading.Event()
     server_running.set()
     
-    # Start playit.gg if server.properties exists and has valid port
+
     server_port = get_server_port()
     if server_port:
         playit_process, playit_log = run_playit()
@@ -577,7 +595,7 @@ def run_server(input_queue):
                 proc.stdin.write("stop\n")
                 proc.stdin.flush()
                 
-                # Wait for server to finish stopping
+
                 while True:
                     line = proc.stdout.readline()
                     if not line:
@@ -608,7 +626,7 @@ def run_server(input_queue):
             if server_running.is_set():
                 print(f"Unknown command: {command}. Please check that the command exists and that you have permission to use it.")
     
-    # Cleanup with proper order
+
     if playit_process:
         playit_process.terminate()
         playit_log.close()
@@ -616,7 +634,7 @@ def run_server(input_queue):
     print("\033[93mWaiting for server to close...\033[0m")
     proc.terminate()
     proc.wait()
-    os._exit(0)  # Exit immediately after server stops
+    os._exit(0)
 
 def stop_server(input_queue):
     input_queue.put("stop")
