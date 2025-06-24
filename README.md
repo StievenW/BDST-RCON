@@ -15,7 +15,7 @@
 - **Console Interface:** A simple console interface that displays real-time server logs and allows you to send commands to the server.
 - **Subprocess Management:** Automatically launches `bedrock_server.exe` and manages its lifecycle.
 - **Unicode & Color Support:** Full support for Unicode (including emoji, Chinese, etc.) and Minecraft color codes in the console output.
-- **Standalone Executable:** No Python installation required - just download and run!
+
 
 ## For Developers
 
