@@ -174,20 +174,16 @@ def get_server_port():
 
 def scan_playit_tunnel(playit_log_file, target_port):
     setup_detected = False
-    setup_completed = False
-    port_mismatch_notified = False
-    tunnel_already_verified = False
-    
+    warning_shown = False
+    browser_opened = False
 
     if not hasattr(scan_playit_tunnel, 'tunnel_setup_state'):
         scan_playit_tunnel.tunnel_setup_state = {'verified': False, 'tunnel_info': None}
-    
 
     if scan_playit_tunnel.tunnel_setup_state['verified']:
         return scan_playit_tunnel.tunnel_setup_state['tunnel_info']
     
     while True:
-
         if not os.path.exists(playit_log_file.name):
             time.sleep(1)
             continue
@@ -207,22 +203,26 @@ def scan_playit_tunnel(playit_log_file, target_port):
 
 
             if 'tunnel running,' in content:
-
                 if 'tunnel running, 0 tunnels registered' in content:
-
-                    if not port_mismatch_notified:
-                        port_mismatch_notified = True
-                        print(f"\n\033[91mWarning: No tunnel configured for port {target_port}\033[0m")
-                        print(f"\033[93mPlease add a tunnel with port {target_port} at:\033[0m")
+                    if not warning_shown:
+                        warning_shown = True
+                        print(f"\n\033[91mWarning: No tunnel configured for port UDP {target_port}\033[0m")
+                        print(f"\033[93mPlease add a tunnel with port UDP {target_port} at:\033[0m")
                         print("\033[92mhttps://playit.gg/account/tunnels\033[0m")
-                        webbrowser.open("https://playit.gg/account/tunnels")
+                        if not browser_opened:
+                            browser_opened = True
+                            webbrowser.open("https://playit.gg/account/tunnels")
                 else:
-
                     wrong_port = re.search(r'127\.0\.0\.1:(\d+)', content)
                     if wrong_port and int(wrong_port.group(1)) != target_port:
-                        print(f"\n\033[91mWarning: Found tunnel with wrong port {wrong_port.group(1)}, need port {target_port}\033[0m")
-                        print("\033[93mPlease update tunnel configuration\033[0m")
-                        webbrowser.open("https://playit.gg/account/tunnels")
+                        if not warning_shown:
+                            warning_shown = True
+                            print(f"\n\033[91mWarning: Missing required port for tunnel connection, need port UDP {target_port}\033[0m")
+                            print("\033[93mPlease update tunnel configuration at:\033[0m")
+                            print("\033[92mhttps://playit.gg/account/tunnels\033[0m")
+                            if not browser_opened:
+                                browser_opened = True
+                                webbrowser.open("https://playit.gg/account/tunnels")
 
 
             elif 'Visit link to setup' in content:
