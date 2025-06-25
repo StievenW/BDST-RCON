@@ -1,11 +1,11 @@
-# BDST-RCON (WINDOWS) v2.0.1
+# BDST-RCON (WINDOWS) v2.0.2
 
 **BDST-RCON** (Bedrock Dedicated Server Tools - RCON) is a Python-based application designed to manage a Minecraft Bedrock Edition server using the RCON protocol. It provides a console interface to monitor and control the server, send commands, and receive output directly from the server console.
 
 ## Quick Start
 
 **Download the latest release:**
-- [Download BDST-RCON v2.0.1](https://github.com/StievenW/BDST-RCON/blob/main/dist/console.exe)
+- [Download BDST-RCON v2.0.2](https://github.com/StievenW/BDST-RCON/blob/main/dist/console.exe)
 - Place the downloaded `console.exe` in the same folder as your `bedrock_server.exe`
 - Run `console.exe` to start the application
 
