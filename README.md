@@ -59,7 +59,7 @@ You can modify the following variables in the `config.py` file to suit your setu
 - **PORT:** The port on which the RCON server listens (default: `25575`)
 - **PASSWORD:** The RCON password for authentication
 
-## What's New in v2.0.1
+## What's New in v2.0.2
 - **Seamless playit.gg Integration:** Enhanced server accessibility with built-in support for playit.gg, making it easier to host and share your Minecraft Bedrock server with friends worldwide
 
 ## Prerequisites
